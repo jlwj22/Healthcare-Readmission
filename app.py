@@ -1,9 +1,10 @@
 """
-30-Day Readmission Risk Dashboard
------------------------------------
-Interactive Streamlit app: enter a diabetic inpatient encounter's discharge
-profile, get a predicted 30-day readmission risk, a risk tier for care
-management targeting, and the top factors behind that prediction (SHAP).
+Readmission Risk & Care Management Targeting Dashboard
+---------------------------------------------------------
+Interactive Streamlit app built the way a health plan's care-management
+analytics team would use it: enter a recently discharged member's
+encounter profile, get a predicted 30-day readmission risk, a risk tier
+for outreach targeting, and the top factors behind that prediction (SHAP).
 
 Run with: streamlit run app.py
 """
@@ -15,7 +16,7 @@ import streamlit as st
 
 from src.data_prep import AGE_MIDPOINTS
 
-st.set_page_config(page_title="Readmission Risk Dashboard", page_icon="\U0001F3E5", layout="wide")
+st.set_page_config(page_title="Readmission Risk & Care Targeting", page_icon="\U0001F3E5", layout="wide")
 
 
 @st.cache_resource
@@ -32,16 +33,17 @@ def load_explainer(_model):
 model, features, cat_features = load_model()
 explainer = load_explainer(model)
 
-st.title("\U0001F3E5 30-Day Readmission Risk Dashboard")
+st.title("\U0001F3E5 Readmission Risk & Care Management Targeting")
 st.caption(
     "Trained on the UCI **Diabetes 130-US Hospitals (1999-2008)** dataset (~99k inpatient "
     "encounters) with an XGBoost classifier. Enter a discharge profile to estimate 30-day "
-    "readmission risk and see what's driving it -- built for a care-management team deciding "
-    "who to call after discharge, not for clinical diagnosis."
+    "readmission risk and see what's driving it -- built the way a health plan's "
+    "care-management analytics team would use it to prioritize post-discharge outreach, "
+    "not for clinical diagnosis."
 )
 
 with st.sidebar:
-    st.header("Encounter profile")
+    st.header("Member encounter profile")
     age_label = st.selectbox("Age group", list(AGE_MIDPOINTS.keys()), index=6)
     time_in_hospital = st.slider("Days in hospital (this stay)", 1, 14, 4)
     num_lab_procedures = st.slider("Number of lab procedures", 0, 120, 40)
@@ -128,15 +130,15 @@ else:
 col1, col2, col3 = st.columns(3)
 col1.metric("Predicted 30-day readmission risk", f"{risk:.1%}")
 col2.metric("Risk tier", tier)
-col3.metric("Cohort base rate", "11.4%", help="Overall 30-day readmission rate across the cleaned dataset.")
+col3.metric("Member population base rate", "11.4%", help="Overall 30-day readmission rate across the cleaned dataset.")
 
 st.markdown(
     f"<div style='padding:0.75rem;border-radius:8px;background:{color}22;border:1px solid {color};'>"
-    f"<b>Care management framing:</b> this encounter falls in the <b>{tier}</b> risk tier. "
-    "Hospitals are penalized under CMS's Hospital Readmissions Reduction Program (HRRP) for "
-    "excess 30-day readmissions -- flagging the highest-risk ~20% of discharges for a follow-up "
-    "call or med-reconciliation visit is a standard, low-cost intervention this kind of score is "
-    "meant to prioritize.</div>",
+    f"<b>Care management framing:</b> this member falls in the <b>{tier}</b> risk tier. "
+    "At AHRQ's cited average of $17,700 per adult 30-day readmission, outreach capacity is "
+    "worth spending on this tier first -- a post-discharge call, medication reconciliation, or "
+    "early follow-up visit is a standard, low-cost intervention a payer care-management program "
+    "uses this kind of score to prioritize.</div>",
     unsafe_allow_html=True,
 )
 
@@ -157,7 +159,8 @@ with st.expander("About this model"):
         - **Data:** [Diabetes 130-US Hospitals, 1999-2008](https://doi.org/10.24432/C5230J) (UCI ML Repository), ~99,340 encounters after excluding deaths/hospice discharges.
         - **Model:** XGBoost, native categorical handling, patient-level (not row-level) train/test split to prevent leakage across a patient's multiple encounters.
         - **Test-set performance:** ROC-AUC ≈ 0.68 (see `models/metrics.json`) -- modest discrimination, which is the honest result for this task: 30-day readmission is a genuinely hard prediction problem, and this is in line with published results on this dataset. The model still captures ~40% of actual readmissions in the top-risk 20% of discharges, which is the number that matters for a targeting use case.
+        - **In payer terms:** at AHRQ's cited $17,700/readmission average, the top-risk 20% of discharges concentrates roughly $19.9M of the $49.4M in readmission cost exposure present in this test set alone -- see the README for the full breakdown.
         - **Fairness note:** race is excluded from the model's features by design; error rates were checked across race subgroups post-hoc (`models/metrics.json`).
-        - This is a portfolio/demo project on public research data, not a validated clinical tool.
+        - This is a portfolio/demo project on public research data, not a validated clinical or actuarial tool.
         """
     )

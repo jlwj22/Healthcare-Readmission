@@ -1,9 +1,11 @@
-# 30-Day Hospital Readmission Risk
+# 30-Day Readmission Risk — Health Plan Care Management Model
 
-A full-pipeline clinical risk model: predicts which diabetic inpatients are
-likely to be readmitted within 30 days of discharge, with a patient-level
-(leakage-safe) evaluation, a fairness check, SHAP explainability, and an
-interactive Streamlit demo for a care-management workflow.
+A full-pipeline risk model built the way a health plan's population-health
+or care-management analytics team would build it: predicts which recently
+discharged diabetic members are likely to be readmitted within 30 days,
+with a patient-level (leakage-safe) evaluation, a fairness check, SHAP
+explainability, and an interactive Streamlit demo for a care-management
+targeting workflow.
 
 ![Python](https://img.shields.io/badge/python-3.11-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -17,11 +19,16 @@ interactive Streamlit demo for a care-management workflow.
 
 ## The business problem
 
+Unplanned readmissions are one of the most expensive, most preventable-adjacent
+categories of medical spend a health plan carries — and one of the few a
+payer can actually act on before the cost hits, by knowing who to reach
+first. A care-management team can't call every recently discharged member;
+this model scores each discharge so limited outreach capacity (a call,
+medication reconciliation, an early follow-up visit) goes to the members
+most likely to bounce back within 30 days. It's the same underlying signal
 CMS's Hospital Readmissions Reduction Program (HRRP) financially penalizes
-hospitals for excess 30-day readmissions. A care-management team can't call
-every discharged patient — this model scores each discharge so limited
-follow-up capacity (a call, medication reconciliation, an early follow-up
-appointment) goes to the patients most likely to bounce back within 30 days.
+*hospitals* on — which is exactly why payers and provider systems both
+build this kind of model, from opposite sides of the same incentive.
 
 ## Dataset
 
@@ -69,7 +76,7 @@ calling out explicitly:
 
 ## Results
 
-Evaluated on a held-out, patient-level 25% test split (22,161 encounters,
+Evaluated on a held-out, patient-level 25% test split (24,757 encounters,
 no patient overlap with train):
 
 | Model | ROC-AUC | PR-AUC |
@@ -94,6 +101,28 @@ That's the number a care-management team sizing a follow-up-call program
 would actually use.
 
 ![ROC / PR curves](reports/figures/roc_pr_curves.png)
+
+### What that's worth in payer terms
+
+AHRQ's Healthcare Cost and Utilization Project puts the **average cost of an
+adult 30-day readmission at $17,700** (2020 Nationwide Readmissions
+Database; [HCUP Statistical Brief #307](https://hcup-us.ahrq.gov/reports/statbriefs/sb307-readmissions-2020.jsp)).
+Applying that to this test set alone (24,757 discharges, 2,789 actual
+30-day readmissions) reframes the capture-rate numbers above as cost
+concentration, not just model accuracy:
+
+| Outreach targets | Discharges reviewed | Readmissions captured | Cost exposure captured |
+|---|---|---|---|
+| Top 10% by risk score | 2,476 | 705 | ≈ $12.5M |
+| Top 20% by risk score | 4,951 | 1,125 | ≈ $19.9M |
+| All 2,789 readmissions | 24,757 | 2,789 | ≈ $49.4M |
+
+In other words: a care-management program that can only reach a fifth of
+discharged members still gets in front of 40% of the total cost exposure —
+which is the pitch a payer-side data science team actually has to make to
+get outreach headcount funded. (This is cost *exposure* the flagged
+population represents, not a claim about dollars an intervention would
+save — that requires an actual program-effectiveness study, not a model.)
 
 SHAP shows prior inpatient visits, discharge disposition, and primary
 diagnosis category dominate the prediction — consistent with both clinical
@@ -155,12 +184,15 @@ factors behind that specific prediction.
 ## Notes & limitations
 
 This is a portfolio project on public research data (1999–2008, 130 US
-hospitals), not a validated clinical tool. A real deployment would need:
-prospective validation on current data (care patterns have changed
-substantially since 2008), a full fairness/bias audit beyond the subgroup
-check above, integration with data this dataset doesn't have (social
-determinants of health, post-discharge follow-up records), and sign-off from
-a clinical and compliance review before touching a live care pathway.
+hospitals), not a validated clinical or actuarial tool. A real deployment on
+a health plan's book of business would need: prospective validation on
+current data (care patterns and cost trends have shifted substantially since
+2008), a full fairness/bias audit beyond the subgroup check above,
+integration with data this dataset doesn't have (claims history and cost
+data instead of a single-encounter snapshot, social determinants of health,
+pharmacy fill data, post-discharge follow-up records), and sign-off from
+clinical, actuarial, and compliance review before it touches a live
+care-management or utilization-management workflow.
 
 ## License
 
