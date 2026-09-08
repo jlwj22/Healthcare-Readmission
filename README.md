@@ -11,6 +11,8 @@ interactive Streamlit demo for a care-management workflow.
 
 **[Live demo →](#running-the-demo)** &nbsp;|&nbsp; **[Notebook →](notebooks/01_eda_and_modeling.ipynb)**
 
+![App demo](reports/screenshots/app_demo.png)
+
 ![Readmission by prior utilization](reports/figures/readmission_by_prior_visits.png)
 
 ## The business problem
