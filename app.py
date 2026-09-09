@@ -22,7 +22,7 @@ st.set_page_config(page_title="Readmission Risk & Care Targeting", page_icon="\U
 @st.cache_resource
 def load_model():
     bundle = joblib.load("models/xgb.joblib")
-    return bundle["model"], bundle["features"], bundle["cat_features"]
+    return bundle["model"], bundle["features"], bundle["cat_features"], bundle["cat_categories"]
 
 
 @st.cache_resource
@@ -30,7 +30,7 @@ def load_explainer(_model):
     return shap.TreeExplainer(_model)
 
 
-model, features, cat_features = load_model()
+model, features, cat_features, cat_categories = load_model()
 explainer = load_explainer(model)
 
 st.title("\U0001F3E5 Readmission Risk & Care Management Targeting")
@@ -105,8 +105,15 @@ row.update({
     "diag_1_category": diag_1_category,
     "diag_2_category": "Missing",
     "diag_3_category": "Missing",
-    "max_glu_serum": "None",
-    "A1Cresult": "None",
+    # These two aren't asked about in the sidebar, so default to "not
+    # measured", which is what roughly 95% of encounters in the training
+    # data actually are for these two labs. That's a real missing value,
+    # not the literal string "None": the raw dataset happens to spell "not
+    # measured" as the text "None", but pandas' own CSV parsing already
+    # reads that as NaN during training, so the categories learned for
+    # these two columns don't include a "None" category at all.
+    "max_glu_serum": np.nan,
+    "A1Cresult": np.nan,
     "change": change,
     "diabetesMed": diabetes_med,
     "insulin": insulin,
@@ -114,7 +121,13 @@ row.update({
 
 X = pd.DataFrame([row])[features]
 for c in cat_features:
-    X[c] = X[c].astype("category")
+    # Cast against the exact categories the model was trained on rather
+    # than letting a single-row DataFrame infer its own category dtype.
+    # A one-row column has no way to know what the full category set
+    # looks like, and when every value in it happens to be missing,
+    # pandas falls back to an empty float64 category index, which
+    # XGBoost's categorical support rejects outright.
+    X[c] = X[c].astype(pd.CategoricalDtype(categories=cat_categories[c]))
 
 risk = float(model.predict_proba(X)[0, 1])
 

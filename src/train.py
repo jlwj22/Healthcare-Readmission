@@ -184,10 +184,26 @@ def main() -> None:
     with open(os.path.join(MODELS_DIR, "metrics.json"), "w") as f:
         json.dump(metrics, f, indent=2)
 
+    # Save each categorical column's training-time categories alongside the
+    # model. A single-row inference DataFrame (like the one the Streamlit
+    # app builds) can't reliably infer a matching category dtype on its own,
+    # especially when a field's value is missing: pandas falls back to an
+    # empty float64 category index in that case, which XGBoost's native
+    # categorical support rejects outright. Rebuilding each column with
+    # pd.CategoricalDtype(categories=...) at inference time avoids that.
+    cat_categories = {c: X[c].cat.categories.tolist() for c in cat_features}
+
     joblib.dump({"pipeline": logreg_pipe, "features": model_features},
                 os.path.join(MODELS_DIR, "logreg.joblib"))
-    joblib.dump({"model": xgb, "features": model_features, "cat_features": cat_features},
-                os.path.join(MODELS_DIR, "xgb.joblib"))
+    joblib.dump(
+        {
+            "model": xgb,
+            "features": model_features,
+            "cat_features": cat_features,
+            "cat_categories": cat_categories,
+        },
+        os.path.join(MODELS_DIR, "xgb.joblib"),
+    )
 
     print(json.dumps(metrics, indent=2))
 
