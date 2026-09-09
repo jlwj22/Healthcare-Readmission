@@ -37,7 +37,7 @@ st.title("\U0001F3E5 Readmission Risk & Care Management Targeting")
 st.caption(
     "Trained on the UCI **Diabetes 130-US Hospitals (1999-2008)** dataset (~99k inpatient "
     "encounters) with an XGBoost classifier. Enter a discharge profile to estimate 30-day "
-    "readmission risk and see what's driving it -- built the way a health plan's "
+    "readmission risk and see what's driving it. Built the way a health plan's "
     "care-management analytics team would use it to prioritize post-discharge outreach, "
     "not for clinical diagnosis."
 )
@@ -81,8 +81,8 @@ with st.sidebar:
     insulin = st.selectbox("Insulin", ["No", "Steady", "Up", "Down"])
     gender = st.selectbox("Gender", ["Female", "Male"])
 
-# Default every categorical (medication) feature to "No" -- the overwhelming
-# majority class for the ~19 medication columns not exposed as sliders --
+# Default every categorical (medication) feature to "No", the overwhelming
+# majority class for the ~19 medication columns not exposed as sliders,
 # and every numeric feature to 0, then override with the fields above.
 row = {f: ("No" if f in cat_features else 0) for f in features}
 row.update({
@@ -136,7 +136,7 @@ st.markdown(
     f"<div style='padding:0.75rem;border-radius:8px;background:{color}22;border:1px solid {color};'>"
     f"<b>Care management framing:</b> this member falls in the <b>{tier}</b> risk tier. "
     "At AHRQ's cited average of $17,700 per adult 30-day readmission, outreach capacity is "
-    "worth spending on this tier first -- a post-discharge call, medication reconciliation, or "
+    "worth spending on this tier first. A post-discharge call, medication reconciliation, or "
     "early follow-up visit is a standard, low-cost intervention a payer care-management program "
     "uses this kind of score to prioritize.</div>",
     unsafe_allow_html=True,
@@ -158,8 +158,10 @@ with st.expander("About this model"):
         """
         - **Data:** [Diabetes 130-US Hospitals, 1999-2008](https://doi.org/10.24432/C5230J) (UCI ML Repository), ~99,340 encounters after excluding deaths/hospice discharges.
         - **Model:** XGBoost, native categorical handling, patient-level (not row-level) train/test split to prevent leakage across a patient's multiple encounters.
-        - **Test-set performance:** ROC-AUC ≈ 0.68 (see `models/metrics.json`) -- modest discrimination, which is the honest result for this task: 30-day readmission is a genuinely hard prediction problem, and this is in line with published results on this dataset. The model still captures ~40% of actual readmissions in the top-risk 20% of discharges, which is the number that matters for a targeting use case.
-        - **In payer terms:** at AHRQ's cited $17,700/readmission average, the top-risk 20% of discharges concentrates roughly $19.9M of the $49.4M in readmission cost exposure present in this test set alone -- see the README for the full breakdown.
+        - **Test-set performance:** ROC-AUC ≈ 0.68 (see `models/metrics.json`), modest discrimination, which is the honest result for this task. 30-day readmission is a genuinely hard prediction problem, and this is in line with published results on this dataset. The model still captures ~40% of actual readmissions in the top-risk 20% of discharges, which is the number that matters for a targeting use case.
+        - **Calibration:** predicted probabilities track observed readmission rates reasonably closely across risk bins (`reports/figures/calibration.png`), which matters if you're pricing outreach cost off this score rather than just ranking members.
+        - **Why the split matters:** the identical model fit on a naive row-level split (allowing the same patient in both train and test) scores about 0.3 points of ROC-AUC higher, a modest but real inflation from patient leakage that the patient-level split in this project avoids. Full comparison in the README.
+        - **In payer terms:** at AHRQ's cited $17,700/readmission average, the top-risk 20% of discharges concentrates roughly $19.9M of the $49.4M in readmission cost exposure present in this test set alone. See the README for the full breakdown.
         - **Fairness note:** race is excluded from the model's features by design; error rates were checked across race subgroups post-hoc (`models/metrics.json`).
         - This is a portfolio/demo project on public research data, not a validated clinical or actuarial tool.
         """

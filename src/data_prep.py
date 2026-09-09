@@ -7,7 +7,7 @@ DeShazo & Strack, 2014; UCI ML Repository #296). 101,766 inpatient
 encounters for diabetic patients across 130 US hospitals.
 
 Target: whether the encounter was followed by an inpatient readmission
-within 30 days (`readmitted == "<30"`) -- the outcome CMS's Hospital
+within 30 days (`readmitted == "<30"`), the outcome CMS's Hospital
 Readmissions Reduction Program (HRRP) actually penalizes hospitals on.
 """
 from __future__ import annotations
@@ -122,7 +122,7 @@ def clean_and_engineer(df: pd.DataFrame) -> pd.DataFrame:
     df["diag_2_category"] = df["diag_2"].apply(_icd9_to_category)
     df["diag_3_category"] = df["diag_3"].apply(_icd9_to_category)
 
-    # id-type columns are codes, not ordinal magnitudes -- treat as strings
+    # id-type columns are codes, not ordinal magnitudes, so treat as strings
     for col in ["admission_type_id", "discharge_disposition_id", "admission_source_id"]:
         df[col] = df[col].astype(str)
 

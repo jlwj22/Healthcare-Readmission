@@ -1,23 +1,29 @@
 """
 Train and evaluate the 30-day readmission risk models.
 
-Two things this pipeline is deliberate about, because getting them wrong is
-the easiest way to produce a healthcare model that looks great and is
+A few things this pipeline is deliberate about, because getting them wrong
+is the easiest way to produce a healthcare model that looks great and is
 useless in production:
 
 1. **Patient-level train/test split.** The same patient can appear in this
    dataset multiple times (69,987 unique patients across 99,340 encounters
-   after cleaning). A random row-level split would leak a patient's other
-   encounters into both train and test, inflating apparent performance.
-   We split on `patient_nbr` instead (GroupShuffleSplit) so no patient's
-   encounters appear in both sets.
+   after cleaning). A random row-level split would let a patient's other
+   encounters leak into both train and test, inflating apparent
+   performance. We split on `patient_nbr` instead (GroupShuffleSplit) so no
+   patient's encounters appear in both sets, and `_naive_split_comparison`
+   below quantifies exactly what that leakage would have been worth.
 2. **Race is excluded from the model features.** It's present in the raw
-   data and is genuinely associated with outcomes in this dataset (as it is
+   data and is genuinely associated with outcomes in this dataset, as it is
    in most US healthcare data, reflecting structural inequities rather than
-   biology) -- but training a clinical risk score on race directly risks
-   baking discriminatory proxies into a tool meant to allocate care
-   management resources. It's kept in the data for a fairness check
-   (do error rates hold up across race groups?) but dropped from `X`.
+   biology. Training a clinical risk score on race directly risks baking
+   discriminatory proxies into a tool meant to allocate care management
+   resources. It's kept in the data for a fairness check (do error rates
+   hold up across race groups?) but dropped from `X`.
+3. **Calibration gets checked, not assumed.** A ranking metric like AUC
+   says nothing about whether a predicted 20% risk actually corresponds to
+   a 20% observed readmission rate. Since the payer-economics numbers in
+   the README rely on the predicted probabilities meaning what they say,
+   `_plot_calibration` checks that directly.
 
 Run with:  python -m src.train
 """
@@ -41,7 +47,7 @@ from sklearn.metrics import (
     roc_auc_score,
     roc_curve,
 )
-from sklearn.model_selection import GroupShuffleSplit
+from sklearn.model_selection import GroupShuffleSplit, train_test_split
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
@@ -59,8 +65,8 @@ MODELS_DIR = "models"
 FIG_DIR = "reports/figures"
 RANDOM_STATE = 42
 
-# Race is intentionally excluded from the feature set -- see module
-# docstring. It's still used later for a fairness/error-rate check.
+# Race is intentionally excluded from the feature set, see module docstring.
+# It's still used later for a fairness/error-rate check.
 FAIRNESS_COL = "race"
 
 
@@ -164,6 +170,17 @@ def main() -> None:
         }
     metrics["fairness_by_race_group"] = fairness
 
+    # --- Why the patient-level split matters, shown rather than asserted --
+    # Fit the identical XGBoost architecture on a naive row-level split that
+    # ignores patient_nbr entirely. Because ~30% of patients here have more
+    # than one encounter, a naive split lets some of a patient's encounters
+    # land in train while others from the same patient land in test, so the
+    # model can partly learn "this patient's baseline risk" from train and
+    # then get credit for "predicting" it in test. That is leakage, and the
+    # gap between these numbers and the patient-level numbers above is what
+    # it's worth in this dataset.
+    metrics["naive_split_comparison"] = _naive_split_comparison(df, model_features, cat_features)
+
     with open(os.path.join(MODELS_DIR, "metrics.json"), "w") as f:
         json.dump(metrics, f, indent=2)
 
@@ -176,9 +193,73 @@ def main() -> None:
 
     _plot_roc_pr(y_test, {"Logistic Regression": logreg_proba, "XGBoost": xgb_proba})
     _plot_readmission_by_prior_visits(df)
+    _plot_calibration(y_test.values, xgb_proba)
     _plot_shap(xgb, X_test_xgb, cat_features)
 
     print(f"\nSaved models to {MODELS_DIR}/, figures to {FIG_DIR}/")
+
+
+def _naive_split_comparison(df, model_features, cat_features):
+    """Fit the same XGBoost architecture on a plain stratified row-level
+    split (no grouping on patient_nbr) and return its test-set metrics
+    alongside the fraction of test patients who also show up in that naive
+    split's training set. This is the comparison that makes the leakage the
+    patient-level split avoids concrete instead of just asserted.
+    """
+    X = df[model_features]
+    y = df[TARGET]
+    groups = df["patient_nbr"]
+
+    X_train, X_test, y_train, y_test, groups_train, groups_test = train_test_split(
+        X, y, groups, test_size=0.25, stratify=y, random_state=RANDOM_STATE
+    )
+
+    overlap = set(groups_train) & set(groups_test)
+    pct_overlap = len(overlap) / groups_test.nunique()
+
+    pos = y_train.sum()
+    neg = len(y_train) - pos
+    xgb_naive = XGBClassifier(
+        n_estimators=400,
+        max_depth=5,
+        learning_rate=0.05,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        scale_pos_weight=neg / pos,
+        eval_metric="auc",
+        enable_categorical=True,
+        tree_method="hist",
+        random_state=RANDOM_STATE,
+        n_jobs=-1,
+    )
+    xgb_naive.fit(X_train, y_train)
+    proba = xgb_naive.predict_proba(X_test)[:, 1]
+
+    return {
+        "roc_auc": round(float(roc_auc_score(y_test, proba)), 4),
+        "pr_auc": round(float(average_precision_score(y_test, proba)), 4),
+        "pct_test_patients_also_seen_in_train": round(float(pct_overlap), 4),
+        "note": "Same model, same features, a random row-level split instead of "
+        "GroupShuffleSplit on patient_nbr. Compare against the patient-level "
+        "xgboost numbers above to see how much of that performance was "
+        "coming from repeat patients leaking across the split.",
+    }
+
+
+def _plot_calibration(y_test, proba):
+    from sklearn.calibration import calibration_curve
+
+    frac_pos, mean_pred = calibration_curve(y_test, proba, n_bins=10, strategy="quantile")
+    fig, ax = plt.subplots(figsize=(5.5, 4.5))
+    ax.plot(mean_pred, frac_pos, marker="o", label="XGBoost")
+    ax.plot([0, 1], [0, 1], "k--", alpha=0.5, label="Perfect calibration")
+    ax.set_xlabel("Mean predicted risk (bin)")
+    ax.set_ylabel("Observed readmission rate (bin)")
+    ax.set_title("Calibration Curve")
+    ax.legend(fontsize=9)
+    fig.tight_layout()
+    fig.savefig(os.path.join(FIG_DIR, "calibration.png"), dpi=150)
+    plt.close(fig)
 
 
 def _plot_roc_pr(y_test, proba_dict):

@@ -64,5 +64,11 @@
       "recall": 0.4,
       "roc_auc": 0.6305
     }
+  },
+  "naive_split_comparison": {
+    "roc_auc": 0.6781,
+    "pr_auc": 0.2354,
+    "pct_test_patients_also_seen_in_train": 0.3577,
+    "note": "Same model, same features, a random row-level split instead of GroupShuffleSplit on patient_nbr. Compare against the patient-level xgboost numbers above to see how much of that performance was coming from repeat patients leaking across the split."
   }
 }
