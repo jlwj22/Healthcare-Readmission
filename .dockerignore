@@ -1,0 +1,16 @@
+.git
+.github
+data/raw
+data/processed
+notebooks
+reports
+tests
+__pycache__
+*.pyc
+.pytest_cache
+.venv
+venv
+.ipynb_checkpoints
+*.egg-info
+.streamlit
+.DS_Store

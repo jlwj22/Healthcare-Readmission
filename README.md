@@ -216,6 +216,14 @@ python -m src.train
 streamlit run app.py
 ```
 
+Or with Docker, using the model artifacts already checked into the repo
+(no training step needed):
+
+```bash
+docker compose up
+# app at http://localhost:8501
+```
+
 The app takes a discharge profile (prior utilization, length of stay,
 diagnosis category, medications, and so on) and returns a 30-day
 readmission risk estimate, a risk tier for care-management targeting, and
