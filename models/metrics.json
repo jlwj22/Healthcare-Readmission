@@ -1,74 +1,404 @@
 {
+  "test_set": {
+    "encounters": 24757,
+    "patients": 17497,
+    "readmissions_30d": 2789,
+    "readmission_rate": 0.1127
+  },
   "logistic_regression": {
-    "roc_auc": 0.6684,
+    "roc_auc": 0.6671,
     "pr_auc": 0.2199,
-    "confusion_matrix_at_0.5": {
-      "true_negative": 15207,
-      "false_positive": 6761,
-      "false_negative": 1266,
-      "true_positive": 1523
+    "top_decile_capture_rate": 0.2316,
+    "top_quintile_capture_rate": 0.3862,
+    "calibration": {
+      "brier_score": 0.0956,
+      "mean_predicted_risk": 0.1135,
+      "observed_rate": 0.1127,
+      "observed_to_expected": 0.993,
+      "calibration_slope": 1.032
+    },
+    "confusion_matrix_top_20pct": {
+      "true_negative": 18094,
+      "false_positive": 3874,
+      "false_negative": 1712,
+      "true_positive": 1077
     }
   },
   "xgboost": {
-    "roc_auc": 0.6752,
-    "pr_auc": 0.2316,
-    "confusion_matrix_at_0.5": {
-      "true_negative": 15608,
-      "false_positive": 6360,
-      "false_negative": 1279,
-      "true_positive": 1510
+    "roc_auc": 0.677,
+    "pr_auc": 0.2345,
+    "top_decile_capture_rate": 0.2539,
+    "top_quintile_capture_rate": 0.4041,
+    "calibration": {
+      "brier_score": 0.0947,
+      "mean_predicted_risk": 0.1124,
+      "observed_rate": 0.1127,
+      "observed_to_expected": 1.002,
+      "calibration_slope": 0.953
     },
-    "top_decile_capture_rate": 0.2528,
-    "top_quintile_capture_rate": 0.4034
+    "confusion_matrix_top_20pct": {
+      "true_negative": 18144,
+      "false_positive": 3824,
+      "false_negative": 1662,
+      "true_positive": 1127
+    },
+    "top_20pct_risk_cutoff": 0.153
   },
-  "fairness_by_race_group": {
-    "AfricanAmerican": {
-      "n": 4607,
-      "actual_readmit_rate": 0.1083,
-      "predicted_positive_rate": 0.3286,
-      "recall": 0.521,
-      "roc_auc": 0.6593
+  "lace": {
+    "roc_auc": 0.5709,
+    "pr_auc": 0.1381,
+    "top_decile_capture_rate": 0.1441,
+    "top_quintile_capture_rate": 0.2768,
+    "calibration": {
+      "brier_score": 0.0993,
+      "mean_predicted_risk": 0.1139,
+      "observed_rate": 0.1127,
+      "observed_to_expected": 0.989,
+      "calibration_slope": 0.961
     },
-    "Asian": {
-      "n": 158,
-      "actual_readmit_rate": 0.0949,
-      "predicted_positive_rate": 0.2595,
-      "recall": 0.4667,
-      "roc_auc": 0.662
+    "confusion_matrix_top_20pct": {
+      "true_negative": 17789,
+      "false_positive": 4179,
+      "false_negative": 2017,
+      "true_positive": 772
     },
-    "Caucasian": {
-      "n": 18563,
-      "actual_readmit_rate": 0.1153,
-      "predicted_positive_rate": 0.3209,
-      "recall": 0.5502,
-      "roc_auc": 0.6778
+    "raw_score_roc_auc": 0.5709,
+    "mean_score": 6.43
+  },
+  "confidence_intervals": {
+    "logistic_regression": {
+      "roc_auc": {
+        "estimate": 0.66708,
+        "ci_low": 0.65568,
+        "ci_high": 0.67863
+      },
+      "pr_auc": {
+        "estimate": 0.21995,
+        "ci_low": 0.2007,
+        "ci_high": 0.24008
+      },
+      "brier_score": {
+        "estimate": 0.09559,
+        "ci_low": 0.0923,
+        "ci_high": 0.09872
+      },
+      "top_decile_capture_rate": {
+        "estimate": 0.23162,
+        "ci_low": 0.21579,
+        "ci_high": 0.24833
+      },
+      "top_quintile_capture_rate": {
+        "estimate": 0.38616,
+        "ci_low": 0.36867,
+        "ci_high": 0.40239
+      }
     },
-    "Hispanic": {
-      "n": 507,
-      "actual_readmit_rate": 0.0966,
-      "predicted_positive_rate": 0.2742,
-      "recall": 0.5714,
-      "roc_auc": 0.744
+    "xgboost": {
+      "roc_auc": {
+        "estimate": 0.67697,
+        "ci_low": 0.66505,
+        "ci_high": 0.68895
+      },
+      "pr_auc": {
+        "estimate": 0.23454,
+        "ci_low": 0.21628,
+        "ci_high": 0.25505
+      },
+      "brier_score": {
+        "estimate": 0.09468,
+        "ci_low": 0.09136,
+        "ci_high": 0.09779
+      },
+      "top_decile_capture_rate": {
+        "estimate": 0.25385,
+        "ci_low": 0.23595,
+        "ci_high": 0.26954
+      },
+      "top_quintile_capture_rate": {
+        "estimate": 0.40409,
+        "ci_low": 0.38451,
+        "ci_high": 0.42316
+      }
     },
-    "Other": {
-      "n": 361,
-      "actual_readmit_rate": 0.1108,
-      "predicted_positive_rate": 0.2493,
-      "recall": 0.475,
-      "roc_auc": 0.6607
+    "lace": {
+      "roc_auc": {
+        "estimate": 0.57092,
+        "ci_low": 0.55847,
+        "ci_high": 0.58329
+      },
+      "pr_auc": {
+        "estimate": 0.13811,
+        "ci_low": 0.1303,
+        "ci_high": 0.14627
+      },
+      "brier_score": {
+        "estimate": 0.09932,
+        "ci_low": 0.09557,
+        "ci_high": 0.10293
+      },
+      "top_decile_capture_rate": {
+        "estimate": 0.14414,
+        "ci_low": 0.133,
+        "ci_high": 0.15925
+      },
+      "top_quintile_capture_rate": {
+        "estimate": 0.2768,
+        "ci_low": 0.26,
+        "ci_high": 0.29427
+      }
     },
-    "Unknown": {
-      "n": 561,
-      "actual_readmit_rate": 0.0802,
-      "predicted_positive_rate": 0.2299,
-      "recall": 0.4,
-      "roc_auc": 0.6305
+    "xgboost_minus_lace": {
+      "roc_auc": {
+        "estimate": 0.10604,
+        "ci_low": 0.0911,
+        "ci_high": 0.1205
+      },
+      "pr_auc": {
+        "estimate": 0.09643,
+        "ci_low": 0.08098,
+        "ci_high": 0.11321
+      },
+      "brier_score": {
+        "estimate": -0.00464,
+        "ci_low": -0.00565,
+        "ci_high": -0.00367
+      },
+      "top_decile_capture_rate": {
+        "estimate": 0.10972,
+        "ci_low": 0.08709,
+        "ci_high": 0.12736
+      },
+      "top_quintile_capture_rate": {
+        "estimate": 0.12729,
+        "ci_low": 0.10329,
+        "ci_high": 0.15143
+      }
+    },
+    "xgboost_minus_logistic_regression": {
+      "roc_auc": {
+        "estimate": 0.00989,
+        "ci_low": 0.00368,
+        "ci_high": 0.01566
+      },
+      "pr_auc": {
+        "estimate": 0.01459,
+        "ci_low": 0.00534,
+        "ci_high": 0.02367
+      },
+      "brier_score": {
+        "estimate": -0.00091,
+        "ci_low": -0.00137,
+        "ci_high": -0.00043
+      },
+      "top_decile_capture_rate": {
+        "estimate": 0.02223,
+        "ci_low": 0.00841,
+        "ci_high": 0.03137
+      },
+      "top_quintile_capture_rate": {
+        "estimate": 0.01793,
+        "ci_low": 0.00382,
+        "ci_high": 0.03121
+      }
+    },
+    "method": "1000 bootstrap resamples of test-set patients (all of a patient's encounters move together), 2.5th/97.5th percentiles."
+  },
+  "decision_curve": {
+    "net_benefit_at_selected_thresholds": {
+      "0.06": {
+        "xgboost": 0.05915,
+        "logistic_regression": 0.05844,
+        "lace": 0.05602,
+        "treat_all": 0.05602
+      },
+      "0.10": {
+        "xgboost": 0.03367,
+        "logistic_regression": 0.03188,
+        "lace": 0.01905,
+        "treat_all": 0.01406
+      },
+      "0.15": {
+        "xgboost": 0.01817,
+        "logistic_regression": 0.01597,
+        "lace": 0.00172,
+        "treat_all": -0.04394
+      },
+      "0.20": {
+        "xgboost": 0.01057,
+        "logistic_regression": 0.00758,
+        "lace": 0.00016,
+        "treat_all": -0.10918
+      },
+      "0.30": {
+        "xgboost": 0.00373,
+        "logistic_regression": 0.00289,
+        "lace": 0.0,
+        "treat_all": -0.26764
+      }
+    },
+    "cost_breakeven_threshold": 0.0565,
+    "note": "Net benefit = TP/n - FP/n * pt/(1-pt), in units of true positives per discharge. The cost break-even threshold is outreach cost / (readmission cost * assumed effectiveness) under the base-case assumptions in src/threshold_optimization.py."
+  },
+  "subgroup_performance": {
+    "race": {
+      "AfricanAmerican": {
+        "n": 4607,
+        "observed_rate": 0.1083,
+        "mean_predicted_risk": 0.1119,
+        "observed_to_expected": 0.968,
+        "roc_auc": 0.6704,
+        "flagged_rate": 0.2125,
+        "recall_when_flagged": 0.4048,
+        "false_positive_rate": 0.1891
+      },
+      "Caucasian": {
+        "n": 18563,
+        "observed_rate": 0.1153,
+        "mean_predicted_risk": 0.1135,
+        "observed_to_expected": 1.016,
+        "roc_auc": 0.6772,
+        "flagged_rate": 0.2007,
+        "recall_when_flagged": 0.4068,
+        "false_positive_rate": 0.1738
+      },
+      "Hispanic": {
+        "n": 507,
+        "observed_rate": 0.0966,
+        "mean_predicted_risk": 0.1036,
+        "observed_to_expected": 0.933,
+        "roc_auc": 0.7448,
+        "flagged_rate": 0.1854,
+        "recall_when_flagged": 0.4286,
+        "false_positive_rate": 0.1594
+      },
+      "Other": {
+        "n": 361,
+        "observed_rate": 0.1108,
+        "mean_predicted_risk": 0.101,
+        "observed_to_expected": 1.097,
+        "roc_auc": 0.688,
+        "flagged_rate": 0.1357,
+        "recall_when_flagged": 0.4,
+        "false_positive_rate": 0.1028
+      },
+      "Unknown": {
+        "n": 561,
+        "observed_rate": 0.0802,
+        "mean_predicted_risk": 0.0976,
+        "observed_to_expected": 0.822,
+        "roc_auc": 0.6275,
+        "flagged_rate": 0.1426,
+        "recall_when_flagged": 0.2889,
+        "false_positive_rate": 0.1298
+      }
+    },
+    "age_band": {
+      "Under 50": {
+        "n": 3929,
+        "observed_rate": 0.1038,
+        "mean_predicted_risk": 0.1009,
+        "observed_to_expected": 1.029,
+        "roc_auc": 0.7125,
+        "flagged_rate": 0.1736,
+        "recall_when_flagged": 0.4289,
+        "false_positive_rate": 0.144
+      },
+      "50-59": {
+        "n": 4316,
+        "observed_rate": 0.1066,
+        "mean_predicted_risk": 0.0982,
+        "observed_to_expected": 1.085,
+        "roc_auc": 0.7235,
+        "flagged_rate": 0.1532,
+        "recall_when_flagged": 0.4022,
+        "false_positive_rate": 0.1234
+      },
+      "60-69": {
+        "n": 5390,
+        "observed_rate": 0.1139,
+        "mean_predicted_risk": 0.1114,
+        "observed_to_expected": 1.023,
+        "roc_auc": 0.6717,
+        "flagged_rate": 0.1933,
+        "recall_when_flagged": 0.3876,
+        "false_positive_rate": 0.1683
+      },
+      "70-79": {
+        "n": 6299,
+        "observed_rate": 0.1124,
+        "mean_predicted_risk": 0.1198,
+        "observed_to_expected": 0.938,
+        "roc_auc": 0.6592,
+        "flagged_rate": 0.2267,
+        "recall_when_flagged": 0.4223,
+        "false_positive_rate": 0.2019
+      },
+      "80+": {
+        "n": 4823,
+        "observed_rate": 0.1242,
+        "mean_predicted_risk": 0.1258,
+        "observed_to_expected": 0.987,
+        "roc_auc": 0.6233,
+        "flagged_rate": 0.2362,
+        "recall_when_flagged": 0.384,
+        "false_positive_rate": 0.2152
+      }
+    },
+    "gender": {
+      "Female": {
+        "n": 13395,
+        "observed_rate": 0.1125,
+        "mean_predicted_risk": 0.1137,
+        "observed_to_expected": 0.989,
+        "roc_auc": 0.6846,
+        "flagged_rate": 0.2053,
+        "recall_when_flagged": 0.42,
+        "false_positive_rate": 0.1781
+      },
+      "Male": {
+        "n": 11362,
+        "observed_rate": 0.1128,
+        "mean_predicted_risk": 0.1108,
+        "observed_to_expected": 1.018,
+        "roc_auc": 0.6684,
+        "flagged_rate": 0.1938,
+        "recall_when_flagged": 0.3853,
+        "false_positive_rate": 0.1694
+      }
     }
   },
   "naive_split_comparison": {
-    "roc_auc": 0.6781,
-    "pr_auc": 0.2354,
+    "roc_auc": 0.6806,
+    "pr_auc": 0.2367,
     "pct_test_patients_also_seen_in_train": 0.3577,
     "note": "Same model, same features, a random row-level split instead of GroupShuffleSplit on patient_nbr. Compare against the patient-level xgboost numbers above to see how much of that performance was coming from repeat patients leaking across the split."
+  },
+  "threshold_optimization": {
+    "assumptions": {
+      "cost_per_outreach": 150.0,
+      "cost_per_readmission": 17700.0,
+      "base_case_effectiveness": 0.15,
+      "note": "Scenario inputs, not validated figures for this program. A real ROI estimate needs a program-effectiveness study."
+    },
+    "base_case_optimal_threshold": 0.05,
+    "base_case_flagged_pct": 0.861,
+    "base_case_net_savings": 3864900.0,
+    "sensitivity_by_effectiveness": {
+      "10%_effectiveness": {
+        "optimal_threshold": 0.08,
+        "flagged_pct": 0.6006,
+        "net_savings": 1653030.0
+      },
+      "15%_effectiveness": {
+        "optimal_threshold": 0.05,
+        "flagged_pct": 0.861,
+        "net_savings": 3864900.0
+      },
+      "20%_effectiveness": {
+        "optimal_threshold": 0.05,
+        "flagged_pct": 0.861,
+        "net_savings": 6219000.0
+      }
+    }
   }
 }

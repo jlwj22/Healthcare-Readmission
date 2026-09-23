@@ -15,6 +15,13 @@ import shap
 import streamlit as st
 
 from src.data_prep import AGE_MIDPOINTS
+from src.threshold_optimization import (
+    DEFAULT_COST_PER_OUTREACH,
+    DEFAULT_COST_PER_READMISSION,
+    DEFAULT_EFFECTIVENESS,
+    compute_cost_curve,
+    find_optimal_threshold,
+)
 
 st.set_page_config(page_title="Readmission Risk & Care Targeting", page_icon="\U0001F3E5", layout="wide")
 
@@ -131,14 +138,25 @@ for c in cat_features:
 
 risk = float(model.predict_proba(X)[0, 1])
 
+# Tier cutoffs are on the calibrated probability scale. 15% is roughly where
+# the top 20% of test-set discharges starts (models/metrics.json,
+# "top_20pct_risk_cutoff"), so High and Very High together are the
+# "riskiest fifth" a capacity-limited outreach team would work first.
 if risk < 0.08:
     tier, color = "Low", "#1a9850"
+    action = "Routine discharge follow-up. Outreach capacity is better spent on higher tiers first."
 elif risk < 0.15:
     tier, color = "Moderate", "#fee08b"
+    action = ("Worth contacting if the program has capacity beyond the riskiest fifth of "
+              "discharges, e.g. an automated check-in rather than a nurse call.")
 elif risk < 0.25:
     tier, color = "High", "#fc8d59"
+    action = ("In the riskiest fifth of discharges. A post-discharge call, medication "
+              "reconciliation, or early follow-up visit is the standard low-cost intervention here.")
 else:
     tier, color = "Very High", "#d73027"
+    action = ("Top of the outreach list. At AHRQ's cited average of $17,700 per adult 30-day "
+              "readmission, this is where limited care-management capacity goes first.")
 
 col1, col2, col3 = st.columns(3)
 col1.metric("Predicted 30-day readmission risk", f"{risk:.1%}")
@@ -148,10 +166,7 @@ col3.metric("Member population base rate", "11.4%", help="Overall 30-day readmis
 st.markdown(
     f"<div style='padding:0.75rem;border-radius:8px;background:{color}22;border:1px solid {color};'>"
     f"<b>Care management framing:</b> this member falls in the <b>{tier}</b> risk tier. "
-    "At AHRQ's cited average of $17,700 per adult 30-day readmission, outreach capacity is "
-    "worth spending on this tier first. A post-discharge call, medication reconciliation, or "
-    "early follow-up visit is a standard, low-cost intervention a payer care-management program "
-    "uses this kind of score to prioritize.</div>",
+    f"{action}</div>",
     unsafe_allow_html=True,
 )
 
@@ -164,15 +179,52 @@ contribs = (
 )
 contribs["direction"] = np.where(contribs["shap_value"] > 0, "Increases risk", "Decreases risk")
 st.bar_chart(contribs.set_index("feature")["shap_value"])
-st.dataframe(contribs[["feature", "shap_value", "direction"]], use_container_width=True, hide_index=True)
+st.dataframe(contribs[["feature", "shap_value", "direction"]], width="stretch", hide_index=True)
+
+st.subheader("Outreach cost-benefit simulator")
+st.caption(
+    "How many discharges is it worth calling, given what an outreach contact costs "
+    "and how effective you assume it is at preventing a readmission? Recomputed live "
+    "on the held-out test set (2,789 actual 30-day readmissions among 24,757 discharges). "
+    "These cost/effectiveness numbers are scenario inputs, not a validated ROI: a real "
+    "estimate needs a program-effectiveness study, not a model."
+)
+
+test_predictions = pd.read_parquet("models/test_predictions.parquet")
+
+sim_col1, sim_col2 = st.columns(2)
+cost_per_outreach = sim_col1.slider(
+    "Cost per outreach contact ($)", 25, 500, int(DEFAULT_COST_PER_OUTREACH), step=25
+)
+effectiveness_pct = sim_col2.slider(
+    "Assumed relative risk reduction from outreach (%)", 0, 40,
+    int(DEFAULT_EFFECTIVENESS * 100),
+)
+
+curve = compute_cost_curve(
+    test_predictions["y"].values,
+    test_predictions["proba"].values,
+    cost_per_outreach=cost_per_outreach,
+    cost_per_readmission=DEFAULT_COST_PER_READMISSION,
+    effectiveness=effectiveness_pct / 100,
+)
+best = find_optimal_threshold(curve)
+
+roi_col1, roi_col2, roi_col3 = st.columns(3)
+roi_col1.metric("Optimal risk threshold", f"{best['threshold']:.2f}")
+roi_col2.metric("Discharges flagged for outreach", f"{best['flagged_pct']:.1%}")
+roi_col3.metric("Net savings vs. no program", f"${best['net_savings']:,.0f}")
+
+st.line_chart(curve.set_index("threshold")["net_savings"])
 
 with st.expander("About this model"):
     st.markdown(
         """
         - **Data:** [Diabetes 130-US Hospitals, 1999-2008](https://doi.org/10.24432/C5230J) (UCI ML Repository), ~99,340 encounters after excluding deaths/hospice discharges.
         - **Model:** XGBoost, native categorical handling, patient-level (not row-level) train/test split to prevent leakage across a patient's multiple encounters.
-        - **Test-set performance:** ROC-AUC ≈ 0.68 (see `models/metrics.json`), modest discrimination, which is the honest result for this task. 30-day readmission is a genuinely hard prediction problem, and this is in line with published results on this dataset. The model still captures ~40% of actual readmissions in the top-risk 20% of discharges, which is the number that matters for a targeting use case.
-        - **Calibration:** predicted probabilities track observed readmission rates reasonably closely across risk bins (`reports/figures/calibration.png`), which matters if you're pricing outreach cost off this score rather than just ranking members.
+        - **Test-set performance:** ROC-AUC 0.677 (95% CI 0.665-0.689, see `models/metrics.json`), modest discrimination, which is the honest result for this task. 30-day readmission is a genuinely hard prediction problem, and this is in line with published results on this dataset. The model still captures ~40% of actual readmissions in the top-risk 20% of discharges, which is the number that matters for a targeting use case.
+        - **Versus the clinical standard:** the LACE index hospitals already use scores ROC-AUC 0.571 on the same test set and catches 28% of readmissions in its top 20%, so the model adds about 0.11 of AUC and 13 points of capture over it.
+        - **Calibration:** mean predicted risk is 11.2% against an observed 11.3%, with a calibration slope of 0.95 (`reports/figures/calibration.png`). That's what makes the percentages above usable as probabilities, and it's why the model is trained without class weighting.
         - **Why the split matters:** the identical model fit on a naive row-level split (allowing the same patient in both train and test) scores about 0.3 points of ROC-AUC higher, a modest but real inflation from patient leakage that the patient-level split in this project avoids. Full comparison in the README.
         - **In payer terms:** at AHRQ's cited $17,700/readmission average, the top-risk 20% of discharges concentrates roughly $19.9M of the $49.4M in readmission cost exposure present in this test set alone. See the README for the full breakdown.
         - **Fairness note:** race is excluded from the model's features by design; error rates were checked across race subgroups post-hoc (`models/metrics.json`).
