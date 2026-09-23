@@ -8,13 +8,14 @@ for outreach targeting, and the top factors behind that prediction (SHAP).
 
 Run with: streamlit run app.py
 """
+import altair as alt
 import joblib
 import numpy as np
 import pandas as pd
 import shap
 import streamlit as st
 
-from src.data_prep import AGE_MIDPOINTS
+from src.data_prep import AGE_MIDPOINTS, FEATURE_LABELS
 from src.threshold_optimization import (
     DEFAULT_COST_PER_OUTREACH,
     DEFAULT_COST_PER_READMISSION,
@@ -36,6 +37,27 @@ def load_model():
 def load_explainer(_model):
     return shap.TreeExplainer(_model)
 
+
+# Code -> description for the ID fields exposed in the sidebar, reused to
+# label the SHAP chart ("Discharge disposition: Discharged to home").
+DISCHARGE_OPTIONS = {
+    "1": "Discharged to home", "6": "Home with home health service",
+    "3": "Transferred to SNF", "22": "Transferred to rehab facility",
+}
+ADMISSION_SOURCE_OPTIONS = {
+    "7": "Emergency Room", "1": "Physician Referral", "4": "Transfer from a hospital",
+}
+ADMISSION_TYPE_OPTIONS = {"1": "Emergency", "2": "Urgent", "3": "Elective"}
+DIAGNOSIS_CATEGORIES = [
+    "Circulatory", "Diabetes", "Respiratory", "Digestive", "Genitourinary",
+    "Injury", "Musculoskeletal", "Neoplasms", "Other",
+]
+CODE_LABELS = {
+    "discharge_disposition_id": DISCHARGE_OPTIONS,
+    "admission_source_id": ADMISSION_SOURCE_OPTIONS,
+    "admission_type_id": ADMISSION_TYPE_OPTIONS,
+    "change": {"Ch": "Yes"},
+}
 
 model, features, cat_features, cat_categories = load_model()
 explainer = load_explainer(model)
@@ -64,25 +86,20 @@ with st.sidebar:
     number_inpatient = st.slider("Prior inpatient visits", 0, 20, 0)
     st.divider()
     discharge_disposition_id = st.selectbox(
-        "Discharge disposition",
-        [("1", "Discharged to home"), ("6", "Home with home health service"),
-         ("3", "Transferred to SNF"), ("22", "Transferred to rehab facility")],
-        format_func=lambda x: x[1],
-    )[0]
-    admission_source_id = st.selectbox(
-        "Admission source",
-        [("7", "Emergency Room"), ("1", "Physician Referral"), ("4", "Transfer from a hospital")],
-        format_func=lambda x: x[1],
-    )[0]
-    admission_type_id = st.selectbox(
-        "Admission type", [("1", "Emergency"), ("2", "Urgent"), ("3", "Elective")],
-        format_func=lambda x: x[1],
-    )[0]
-    diag_1_category = st.selectbox(
-        "Primary diagnosis category",
-        ["Circulatory", "Diabetes", "Respiratory", "Digestive", "Genitourinary",
-         "Injury", "Musculoskeletal", "Neoplasms", "Other"],
+        "Discharge disposition", list(DISCHARGE_OPTIONS), format_func=DISCHARGE_OPTIONS.get,
     )
+    admission_source_id = st.selectbox(
+        "Admission source", list(ADMISSION_SOURCE_OPTIONS), format_func=ADMISSION_SOURCE_OPTIONS.get,
+    )
+    admission_type_id = st.selectbox(
+        "Admission type", list(ADMISSION_TYPE_OPTIONS), format_func=ADMISSION_TYPE_OPTIONS.get,
+    )
+    diag_1_category = st.selectbox("Primary diagnosis category", DIAGNOSIS_CATEGORIES)
+    # Defaults are the most common category in the training data. Leaving
+    # these as "Missing" would be unrealistic (under 1% of encounters) and
+    # the model treats a missing secondary diagnosis as a risk signal.
+    diag_2_category = st.selectbox("Secondary diagnosis category", DIAGNOSIS_CATEGORIES)
+    diag_3_category = st.selectbox("Tertiary diagnosis category", DIAGNOSIS_CATEGORIES)
     change = st.selectbox("Medication changed this visit?", ["No", "Ch"], format_func=lambda x: "Yes" if x == "Ch" else "No")
     diabetes_med = st.selectbox("On a diabetes medication?", ["Yes", "No"])
     insulin = st.selectbox("Insulin", ["No", "Steady", "Up", "Down"])
@@ -110,8 +127,8 @@ row.update({
     "admission_source_id": admission_source_id,
     "medical_specialty_grouped": "Missing",
     "diag_1_category": diag_1_category,
-    "diag_2_category": "Missing",
-    "diag_3_category": "Missing",
+    "diag_2_category": diag_2_category,
+    "diag_3_category": diag_3_category,
     # These two aren't asked about in the sidebar, so default to "not
     # measured", which is what roughly 95% of encounters in the training
     # data actually are for these two labs. That's a real missing value,
@@ -171,15 +188,51 @@ st.markdown(
 )
 
 st.subheader("What's driving this prediction?")
+st.caption(
+    "The eight inputs that moved this member's score the most, relative to an average "
+    "discharge. Red pushes risk up, blue pulls it down. Bar length is the SHAP value "
+    "(contribution to the model's log-odds)."
+)
+
+
+def _display_value(feature, value):
+    if feature == "age_numeric":
+        return age_label
+    if pd.isna(value) or value == "Missing":
+        return "Not recorded"
+    return CODE_LABELS.get(feature, {}).get(value, value)
+
+
 shap_values = explainer(X)
 contribs = (
     pd.DataFrame({"feature": features, "shap_value": shap_values.values[0]})
     .sort_values("shap_value", key=abs, ascending=False)
     .head(8)
 )
+contribs["factor"] = [
+    f"{FEATURE_LABELS.get(f, f)}: {_display_value(f, X.iloc[0][f])}" for f in contribs["feature"]
+]
 contribs["direction"] = np.where(contribs["shap_value"] > 0, "Increases risk", "Decreases risk")
-st.bar_chart(contribs.set_index("feature")["shap_value"])
-st.dataframe(contribs[["feature", "shap_value", "direction"]], width="stretch", hide_index=True)
+
+shap_chart = (
+    alt.Chart(contribs)
+    .mark_bar()
+    .encode(
+        x=alt.X("shap_value:Q", title="Contribution to risk (SHAP, log-odds)"),
+        y=alt.Y("factor:N", sort=None, title=None, axis=alt.Axis(labelLimit=320)),
+        color=alt.Color(
+            "direction:N",
+            scale=alt.Scale(domain=["Increases risk", "Decreases risk"], range=["#d73027", "#4575b4"]),
+            legend=alt.Legend(title=None, orient="bottom"),
+        ),
+        tooltip=[
+            alt.Tooltip("factor:N", title="Factor"),
+            alt.Tooltip("shap_value:Q", title="SHAP value", format="+.3f"),
+        ],
+    )
+    .properties(height=320)
+)
+st.altair_chart(shap_chart, width="stretch")
 
 st.subheader("Outreach cost-benefit simulator")
 st.caption(

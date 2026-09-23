@@ -66,6 +66,7 @@ from xgboost import XGBClassifier
 
 from src.data_prep import (
     CATEGORICAL_FEATURES,
+    FEATURE_LABELS,
     MODEL_FEATURES,
     NUMERIC_FEATURES,
     TARGET,
@@ -482,6 +483,7 @@ def _plot_shap(xgb, X_test, cat_features):
     sample = X_test.sample(min(2000, len(X_test)), random_state=RANDOM_STATE)
     explainer = shap.TreeExplainer(xgb)
     shap_values = explainer(sample)
+    shap_values.feature_names = [FEATURE_LABELS.get(f, f) for f in sample.columns]
     fig = plt.figure(figsize=(7.5, 6))
     shap.summary_plot(shap_values, sample, show=False, max_display=15)
     fig.tight_layout()

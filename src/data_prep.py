@@ -90,6 +90,35 @@ NUMERIC_FEATURES = [
 
 MODEL_FEATURES = NUMERIC_FEATURES + CATEGORICAL_FEATURES
 
+# Human-readable names for charts and the demo app.
+FEATURE_LABELS = {
+    "age_numeric": "Age",
+    "time_in_hospital": "Days in hospital",
+    "num_lab_procedures": "Lab procedures",
+    "num_procedures": "Procedures",
+    "num_medications": "Medications",
+    "number_outpatient": "Prior outpatient visits",
+    "number_emergency": "Prior ER visits",
+    "number_inpatient": "Prior inpatient stays",
+    "number_diagnoses": "Number of diagnoses",
+    "total_prior_visits": "Total prior visits",
+    "num_medication_changes": "Diabetes med dose changes",
+    "race": "Race",
+    "gender": "Sex",
+    "admission_type_id": "Admission type",
+    "discharge_disposition_id": "Discharge disposition",
+    "admission_source_id": "Admission source",
+    "medical_specialty_grouped": "Admitting specialty",
+    "diag_1_category": "Primary diagnosis",
+    "diag_2_category": "Secondary diagnosis",
+    "diag_3_category": "Tertiary diagnosis",
+    "max_glu_serum": "Max glucose serum test",
+    "A1Cresult": "HbA1c result",
+    "change": "Diabetes meds changed",
+    "diabetesMed": "On diabetes medication",
+    **{med: med.capitalize() for med in MEDICATION_COLS},
+}
+
 
 def load_raw(path: str = RAW_PATH) -> pd.DataFrame:
     df = pd.read_csv(path, na_values=["?"], low_memory=False)
