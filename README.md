@@ -3,11 +3,8 @@
 A full-pipeline risk model built the way a health plan's population-health
 or care-management analytics team would build it. It predicts which
 recently discharged diabetic members are likely to be readmitted within 30
-days, with a patient-level (leakage-safe) evaluation, a head-to-head against
-the LACE index hospitals already use, calibrated probabilities, bootstrap
-confidence intervals, decision curve and cost analysis, subgroup checks,
-SHAP explainability, and an interactive Streamlit demo for a
-care-management targeting workflow.
+days, so a care-management team with limited capacity knows who to call
+first, and it comes with an interactive Streamlit demo for that workflow.
 
 [![CI](https://github.com/jlwj22/Healthcare-Readmission/actions/workflows/ci.yml/badge.svg)](https://github.com/jlwj22/Healthcare-Readmission/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11-blue)
@@ -15,6 +12,24 @@ care-management targeting workflow.
 ![Status](https://img.shields.io/badge/status-portfolio%20project-lightgrey)
 
 **[Run the demo →](#running-the-demo)** &nbsp;|&nbsp; **[Notebook →](notebooks/01_eda_and_modeling.ipynb)** &nbsp;|&nbsp; **[Model card →](MODEL_CARD.md)**
+
+## Key results
+
+- **Beats the clinical standard.** ROC-AUC 0.677 vs. 0.571 for the LACE
+  index hospitals already use. Flagging the riskiest 20% of discharges
+  catches **40% of 30-day readmissions** (LACE: 28%).
+- **Probabilities you can put a dollar figure on.** Predicted risk averages
+  11.2% against an observed 11.3%, after a calibration check caught class
+  weighting inflating every probability about fourfold.
+- **Leakage-safe, with error bars.** Patient-level train/test split, and
+  95% confidence intervals on every headline number from a bootstrap that
+  resamples patients.
+- **Tied to a decision, not just a metric.** Decision curve and cost
+  analysis show where outreach pays for itself: above about 5.6% risk
+  under base-case cost assumptions.
+- **Checked across groups.** Calibration and recall hold up across race,
+  age, and sex at a shared outreach cutoff; weaker ranking for members 80+
+  is called out rather than hidden.
 
 ![App demo](reports/screenshots/app_demo.png)
 
